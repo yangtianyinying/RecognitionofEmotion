@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SEED 情绪识别 - 报告</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <nav class="nav container">
+      <a href="./index.html" class="nav-link">说明</a>
+      <a href="./report.html" class="nav-link nav-link-active">报告</a>
+      <a href="./demo.html" class="nav-link">交互</a>
+    </nav>
+
+    <header class="container">
+      <h1>SEED 情绪识别 - 实验报告</h1>
+      <p class="subtitle">展示训练得到的结果（Accuracy / Macro-F1）与静态图表。</p>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <h2>数据集概览</h2>
+        <div id="dataset-summary" class="grid two"></div>
+      </section>
+
+      <section class="card">
+        <h2>subject_dependent（被试内）结果</h2>
+        <table id="table-subject-dependent">
+          <thead>
+            <tr>
+              <th>模型</th>
+              <th>Accuracy (mean ± std)</th>
+              <th>Macro-F1 (mean ± std)</th>
+              <th>折数</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>subject_independent（跨被试）结果</h2>
+        <table id="table-subject-independent">
+          <thead>
+            <tr>
+              <th>模型</th>
+              <th>Accuracy (mean ± std)</th>
+              <th>Macro-F1 (mean ± std)</th>
+              <th>折数</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>静态图表（可用于汇报）</h2>
+        <div class="figure-grid">
+          <img src="./assets/figures/model_accuracy.png" alt="model accuracy" />
+          <img src="./assets/figures/model_macro_f1.png" alt="model macro f1" />
+          <img src="./assets/figures/confusions.png" alt="confusion matrices" />
+        </div>
+      </section>
+    </main>
+
+    <footer class="container footer">
+      <p>Data from <code>docs/assets/results.json</code></p>
+    </footer>
+
+    <script src="./report.js"></script>
+  </body>
+</html>
+

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SEED 情绪识别 - 交互演示</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <nav class="nav container">
+      <a href="./index.html" class="nav-link">说明</a>
+      <a href="./report.html" class="nav-link">报告</a>
+      <a href="./demo.html" class="nav-link nav-link-active">交互</a>
+    </nav>
+
+    <header class="container">
+      <h1>SEED 情绪识别：交互演示</h1>
+      <p class="subtitle">切换评估协议/指标/模型，查看结果表格与平均混淆矩阵。</p>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <h2>数据集概览</h2>
+        <div id="dataset-summary" class="grid two"></div>
+      </section>
+
+      <section class="card">
+        <h2>模型结果看板</h2>
+        <div class="controls">
+          <label for="protocol-select">评估协议：</label>
+          <select id="protocol-select">
+            <option value="subject_dependent">subject_dependent</option>
+            <option value="subject_independent">subject_independent</option>
+          </select>
+          <label for="metric-select">排序指标：</label>
+          <select id="metric-select">
+            <option value="accuracy_mean">accuracy</option>
+            <option value="macro_f1_mean">macro_f1</option>
+          </select>
+        </div>
+        <table id="result-table">
+          <thead>
+            <tr>
+              <th>模型</th>
+              <th>Accuracy (mean ± std)</th>
+              <th>Macro-F1 (mean ± std)</th>
+              <th>折数</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>混淆矩阵（平均）</h2>
+        <div class="controls">
+          <label for="cm-select">选择模型：</label>
+          <select id="cm-select"></select>
+        </div>
+        <div id="cm-container"></div>
+      </section>
+
+      <section class="card">
+        <h2>静态图表（可用于汇报）</h2>
+        <div class="figure-grid">
+          <img src="./assets/figures/model_accuracy.png" alt="model accuracy" />
+          <img src="./assets/figures/model_macro_f1.png" alt="model macro f1" />
+          <img src="./assets/figures/confusions.png" alt="confusion matrices" />
+        </div>
+      </section>
+    </main>
+
+    <footer class="container footer">
+      <p>Data from <code>docs/assets/results.json</code></p>
+    </footer>
+
+    <script src="./demo.js"></script>
+  </body>
+</html>
+

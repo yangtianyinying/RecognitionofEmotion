@@ -24,6 +24,26 @@ body {
   margin: 0 auto;
 }
 
+nav.nav {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0 10px;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--subtext);
+  border: 1px solid transparent;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.nav-link-active {
+  border-color: var(--border);
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary);
+}
+
 header {
   padding: 28px 0 12px;
 }
