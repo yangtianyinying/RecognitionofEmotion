@@ -1,0 +1,19 @@
+# 忽略大数据（避免提交 @data/ 目录）
+data/
+
+# Python/编辑器
+.venv/
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 训练输出（避免重复提交；GitHub Pages 所需的 docs/ 会保留）
+outputs/
+
+# OS
+Thumbs.db
+Desktop.ini
+
