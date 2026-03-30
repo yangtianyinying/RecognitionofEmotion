@@ -20,6 +20,25 @@
 
     <main class="container">
       <section class="card">
+        <h2>上传 .mat 生成实时报告</h2>
+        <p class="subtitle">
+          不上传时显示默认基线报告；上传后会基于该文件实时生成预测分布报告（浏览器端推理）。
+        </p>
+        <div class="controls">
+          <input id="upload-mat-report" type="file" accept=".mat" />
+          <label for="feature-type-report">特征类型：</label>
+          <select id="feature-type-report">
+            <option value="de_lds" selected>de_lds</option>
+            <option value="de">de</option>
+            <option value="psd">psd</option>
+          </select>
+          <button id="run-report-infer" type="button">生成报告</button>
+        </div>
+        <p id="report-upload-status" class="status"></p>
+        <div id="realtime-report"></div>
+      </section>
+
+      <section class="card">
         <h2>数据集概览</h2>
         <div id="dataset-summary" class="grid two"></div>
       </section>
@@ -68,6 +87,7 @@
       <p>Data from <code>docs/assets/results.json</code></p>
     </footer>
 
+    <script src="./upload_infer.js"></script>
     <script src="./report.js"></script>
   </body>
 </html>

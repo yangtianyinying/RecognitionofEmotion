@@ -20,6 +20,26 @@
 
     <main class="container">
       <section class="card">
+        <h2>上传 .mat 数据并预测</h2>
+        <p class="subtitle">
+          上传与你当前 `data/EEG_features` 同结构的 `.mat` 特征文件，网页会直接进行推理（浏览器端，不依赖后端）。
+        </p>
+        <div class="controls">
+          <input id="upload-mat" type="file" accept=".mat" />
+          <label for="feature-type-upload">特征类型：</label>
+          <select id="feature-type-upload">
+            <option value="de_lds" selected>de_lds</option>
+            <option value="de">de</option>
+            <option value="psd">psd</option>
+          </select>
+          <button id="run-upload-infer" type="button">开始分析</button>
+        </div>
+        <p id="upload-status" class="status"></p>
+        <div id="upload-summary"></div>
+        <div id="upload-table"></div>
+      </section>
+
+      <section class="card">
         <h2>数据集概览</h2>
         <div id="dataset-summary" class="grid two"></div>
       </section>
@@ -74,6 +94,7 @@
       <p>Data from <code>docs/assets/results.json</code></p>
     </footer>
 
+    <script src="./upload_infer.js"></script>
     <script src="./demo.js"></script>
   </body>
 </html>

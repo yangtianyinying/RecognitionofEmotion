@@ -79,6 +79,26 @@ h1, h2 {
   margin-bottom: 12px;
 }
 
+input[type="file"] {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #fff;
+}
+
+button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 select {
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -126,6 +146,14 @@ th {
 .footer {
   padding: 8px 0 20px;
   color: var(--subtext);
+}
+
+.status {
+  color: var(--subtext);
+}
+
+.card-soft {
+  background: #f8fafc;
 }
 
 .figure-grid {
