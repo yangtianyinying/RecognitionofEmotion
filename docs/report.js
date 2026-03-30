@@ -43,7 +43,7 @@ async function main() {
   renderTable(data.summary, "table-subject-dependent", "subject_dependent", "accuracy_mean");
   renderTable(data.summary, "table-subject-independent", "subject_independent", "accuracy_mean");
 
-  const fileInput = document.getElementById("upload-mat-report");
+  const fileInput = document.getElementById("upload-zip-report");
   const featureSelect = document.getElementById("feature-type-report");
   const runBtn = document.getElementById("run-report-infer");
   const statusEl = document.getElementById("report-upload-status");
@@ -60,24 +60,51 @@ async function main() {
     return `${v.toFixed(2)} ${units[idx]}`;
   }
 
+  function renderProtocolOverallRows(p) {
+    const row = (name, m) => `
+      <tr>
+        <td>${name}</td>
+        <td>${fmt(m.overall.accuracy)}</td>
+        <td>${fmt(m.overall.macro_f1)}</td>
+        <td>${m.coverage.valid_trials}</td>
+        <td>${m.coverage.expected_trials}</td>
+        <td>${(m.coverage.ratio * 100).toFixed(1)}%</td>
+      </tr>
+    `;
+    return row("LR", p.lr) + row("MLP", p.mlp);
+  }
+
+  function renderPerSubjectRows(items) {
+    if (!items || !items.length) {
+      return `<tr><td colspan="4">无可用被试结果</td></tr>`;
+    }
+    return items
+      .map(
+        (x) => `<tr><td>${x.subject}</td><td>${fmt(x.accuracy)}</td><td>${fmt(x.macro_f1)}</td><td>${x.valid_trials}</td></tr>`
+      )
+      .join("");
+  }
+
+  function renderPerFoldRows(items) {
+    if (!items || !items.length) {
+      return `<tr><td colspan="5">无可用fold结果</td></tr>`;
+    }
+    return items
+      .map(
+        (x) =>
+          `<tr><td>${x.fold}</td><td>${x.test_subjects.join(", ")}</td><td>${fmt(x.accuracy)}</td><td>${fmt(x.macro_f1)}</td><td>${x.valid_trials}</td></tr>`
+      )
+      .join("");
+  }
+
   function renderRealtimeReport(result, fileInfo) {
+    const sd = result.protocols.subject_dependent;
+    const si = result.protocols.subject_independent;
     const distItems = Object.entries(result.counts).sort((a, b) => b[1] - a[1]);
+    const distHtml = distItems
+      .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td><td>${((v / Math.max(result.total_trials, 1)) * 100).toFixed(1)}%</td></tr>`)
+      .join("");
     const cs = result.confidence_stats || {};
-    const meanPct = (v) => ((v / Math.max(result.total_trials, 1)) * 100).toFixed(1);
-    const distHtmlPct = distItems
-      .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td><td>${meanPct(v)}%</td></tr>`)
-      .join("");
-
-    const topTrials = result.top_trials_by_confidence || [];
-    const topTrialsHtml = topTrials
-      .map((r) => `<tr><td>${r.trial}</td><td>${r.pred_label}</td><td>${fmt(r.confidence)}</td></tr>`)
-      .join("");
-
-    const perLabelMeanConf = result.per_label_confidence_mean || {};
-    const perLabelHtml = Object.entries(perLabelMeanConf)
-      .sort((a, b) => b[1] - a[1])
-      .map(([k, v]) => `<tr><td>${k}</td><td>${fmt(v)}</td></tr>`)
-      .join("");
 
     reportEl.innerHTML = `
       <div class="card card-soft">
@@ -87,15 +114,16 @@ async function main() {
           <h4 style="margin:0 0 6px;">实验输入信息（Input）</h4>
           <p><strong>上传文件：</strong>${fileInfo.name}</p>
           <p><strong>文件大小：</strong>${fileInfo.size}</p>
+          <p><strong>上传被试：</strong>${(result.uploaded_subjects || []).join(", ") || "无"}</p>
           <p><strong>特征类型：</strong>${result.feature_type_used}</p>
-          <p><strong>模型类型：</strong>${result.model_type}</p>
+          <p><strong>模型类型：</strong>LR + MLP（SEED 两协议）</p>
         </div>
 
         <div style="height: 10px;"></div>
 
         <div class="card card-soft" style="padding: 12px; margin-top: 12px;">
           <h4 style="margin:0 0 6px;">结果概览（Prediction Summary）</h4>
-          <p>共分析 <strong>${result.total_trials}</strong> 个 trial，主导情绪为 <strong>${result.dominant_label}</strong>。</p>
+          <p>共分析 <strong>${result.total_trials}</strong> 个有效 trial，主导情绪为 <strong>${result.dominant_label}</strong>。</p>
           <div class="kpi-grid">
             <div class="kpi"><div class="kpi-label">置信度均值</div><div class="kpi-value">${fmt(cs.mean ?? 0)}</div></div>
             <div class="kpi"><div class="kpi-label">置信度中位数</div><div class="kpi-value">${fmt(cs.median ?? 0)}</div></div>
@@ -107,36 +135,45 @@ async function main() {
         <div style="height: 10px;"></div>
 
         <div class="card card-soft" style="padding: 12px; margin-top: 12px;">
+          <h4 style="margin:0 0 6px;">SEED 协议指标（Accuracy / Macro-F1）</h4>
+          <h5 style="margin:8px 0;">subject_dependent</h5>
+          <table>
+            <thead><tr><th>模型</th><th>Accuracy</th><th>Macro-F1</th><th>有效trial</th><th>期望trial</th><th>Coverage</th></tr></thead>
+            <tbody>${renderProtocolOverallRows(sd)}</tbody>
+          </table>
+          <h5 style="margin:8px 0;">subject_independent</h5>
+          <table>
+            <thead><tr><th>模型</th><th>Accuracy</th><th>Macro-F1</th><th>有效trial</th><th>期望trial</th><th>Coverage</th></tr></thead>
+            <tbody>${renderProtocolOverallRows(si)}</tbody>
+          </table>
+          <p class="subtitle">说明：你选择了“缺失数据跳过”，所以指标基于有效覆盖样本计算。</p>
+        </div>
+
+        <div class="card card-soft" style="padding: 12px; margin-top: 12px;">
+          <h4 style="margin:0 0 6px;">subject_dependent 按被试指标</h4>
+          <table>
+            <thead><tr><th>subject</th><th>Accuracy</th><th>Macro-F1</th><th>有效trial</th></tr></thead>
+            <tbody>${renderPerSubjectRows(sd.lr.per_subject)}</tbody>
+          </table>
+        </div>
+
+        <div class="card card-soft" style="padding: 12px; margin-top: 12px;">
+          <h4 style="margin:0 0 6px;">subject_independent 按fold指标（LR）</h4>
+          <table>
+            <thead><tr><th>fold</th><th>test_subjects</th><th>Accuracy</th><th>Macro-F1</th><th>有效trial</th></tr></thead>
+            <tbody>${renderPerFoldRows(si.lr.per_fold)}</tbody>
+          </table>
+        </div>
+
+        <div class="card card-soft" style="padding: 12px; margin-top: 12px;">
           <h4 style="margin:0 0 6px;">预测分布（Counts / Share）</h4>
           <table>
             <thead><tr><th>情绪</th><th>预测次数</th><th>占比</th></tr></thead>
-            <tbody>${distHtmlPct}</tbody>
-          </table>
-          <p class="subtitle" style="margin-top: 10px;">
-            解释：这是“上传文件推理报告”，反映你上传的特征文件在当前模型下的情绪预测分布。
-            由于上传 .mat 本身不携带“真实标签”，本页面不直接给出 Accuracy / Macro-F1 等评估指标。
-          </p>
-        </div>
-
-        <div class="card card-soft" style="padding: 12px; margin-top: 12px;">
-          <h4 style="margin:0 0 6px;">置信度（Confidence）</h4>
-          <p class="subtitle" style="margin-top: 0;">
-            说明：置信度来自当前模型输出的 softmax 概率（取被预测类别对应的概率）。
-          </p>
-          <table>
-            <thead><tr><th>情绪</th><th>作为预测结果时的平均置信度</th></tr></thead>
-            <tbody>${perLabelHtml}</tbody>
+            <tbody>${distHtml}</tbody>
           </table>
         </div>
 
-        <div class="card card-soft" style="padding: 12px; margin-top: 12px;">
-          <h4 style="margin:0 0 6px;">最高置信度 trial（Top ${topTrials.length}）</h4>
-          <table>
-            <thead><tr><th>trial</th><th>预测情绪</th><th>置信度</th></tr></thead>
-            <tbody>${topTrialsHtml}</tbody>
-          </table>
-          <p class="subtitle">说明：只展示最高置信度的前 ${topTrials.length} 条，便于快速检查。</p>
-        </div>
+        <p class="subtitle">说明：为保证和 SEED 划分一致，subject_dependent 使用“按被试测试trial列表”，subject_independent 使用“按fold测试subject列表”。</p>
       </div>
     `;
   }
@@ -144,14 +181,14 @@ async function main() {
   runBtn.addEventListener("click", async () => {
     const file = fileInput.files && fileInput.files[0];
     if (!file) {
-      statusEl.textContent = "请先选择 .mat 文件。";
+      statusEl.textContent = "请先选择 .zip 文件。";
       return;
     }
-    statusEl.textContent = "正在生成实时报告，请稍候...";
+    statusEl.textContent = "正在解析 zip 并生成协议报告，请稍候...";
     reportEl.innerHTML = "";
     runBtn.disabled = true;
     try {
-      const result = await window.UploadInference.runUploadedMatInference(file, featureSelect.value);
+      const result = await window.UploadInference.runUploadedZipAnalysis(file, featureSelect.value);
       statusEl.textContent = "实时报告生成完成。";
       const fileInfo = { name: file.name, size: humanBytes(file.size || 0) };
       renderRealtimeReport(result, fileInfo);

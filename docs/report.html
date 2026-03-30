@@ -20,19 +20,20 @@
 
     <main class="container">
       <section class="card">
-        <h2>上传 .mat 生成实时报告</h2>
+        <h2>上传 zip 生成实时实验报告</h2>
         <p class="subtitle">
-          不上传时显示默认基线报告；上传后会基于该文件实时生成预测分布报告（浏览器端推理）。
+          不上传时显示默认基线报告；上传后会基于 zip 子集实时生成包含 Accuracy / Macro-F1 的协议报告（浏览器端推理）。
         </p>
         <p class="subtitle" style="margin-top: 10px;">
-          说明：实时“上传报告”是基于导出的 <code>Logistic Regression</code> 进行推理（文件：`docs/assets/web_model.json`）。
-          因为上传 `.mat` 通常不携带真实标签，所以该报告默认不会给出 Accuracy / Macro-F1 等评估指标。
+          目录规范：
+          <code>EEF_features/&lt;subject&gt;.mat</code>，
+          <code>save_info/&lt;subject&gt;_&lt;date&gt;_&lt;session&gt;_save_info.csv</code>。
         </p>
         <p class="subtitle" style="margin-top: 10px;">
-          为获得更稳定的解析速度：首次点击“生成报告”时需要加载 Pyodide（用于解析 `.mat`），可能会等待一小段时间。
+          为获得稳定解析：首次点击“生成报告”时会加载 Pyodide（解析 `.mat`）与 JSZip（解压 zip），可能会等待一小段时间。
         </p>
         <div class="controls">
-          <input id="upload-mat-report" type="file" accept=".mat" />
+          <input id="upload-zip-report" type="file" accept=".zip" />
           <label for="feature-type-report">特征类型：</label>
           <select id="feature-type-report">
             <option value="de_lds" selected>de_lds</option>
@@ -94,6 +95,7 @@
       <p>Data from <code>docs/assets/results.json</code></p>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="./upload_infer.js"></script>
     <script src="./report.js"></script>
   </body>

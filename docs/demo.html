@@ -20,19 +20,20 @@
 
     <main class="container">
       <section class="card">
-        <h2>上传 .mat 数据并预测</h2>
+        <h2>上传 zip 子集并分析（SEED 两协议）</h2>
         <p class="subtitle">
-          上传与你当前 `data/EEG_features` 同结构的 `.mat` 特征文件，网页会直接进行推理（浏览器端，不依赖后端）。
+          上传一个 zip（包含 `EEF_features/` 与 `save_info/`），网页会在浏览器端完成推理，并按 SEED 两种协议给出指标。
         </p>
         <p class="subtitle" style="margin-top: 10px;">
-          说明：当前网页端推理只使用导出的 <code>Logistic Regression</code>（文件：`docs/assets/web_model.json`）。
-          如果你想用 SVM / RandomForest / MLP 推理，需要重新导出对应的浏览器可用模型。
+          目录规范：
+          <code>EEF_features/&lt;subject&gt;.mat</code>，
+          <code>save_info/&lt;subject&gt;_&lt;date&gt;_&lt;session&gt;_save_info.csv</code>（session 建议 1..4）。
         </p>
         <p class="subtitle" style="margin-top: 10px;">
-          首次点击“开始分析”时，浏览器需要加载 Pyodide（用于解析 `.mat`），因此可能会慢一些，这是正常的。
+          说明：当前网页端支持 LR + MLP；首次点击“开始分析”时会加载 Pyodide（解析 `.mat`）与 JSZip（解压 zip），可能稍慢。
         </p>
         <div class="controls">
-          <input id="upload-mat" type="file" accept=".mat" />
+          <input id="upload-zip" type="file" accept=".zip" />
           <label for="feature-type-upload">特征类型：</label>
           <select id="feature-type-upload">
             <option value="de_lds" selected>de_lds</option>
@@ -101,6 +102,7 @@
       <p>Data from <code>docs/assets/results.json</code></p>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="./upload_infer.js"></script>
     <script src="./demo.js"></script>
   </body>

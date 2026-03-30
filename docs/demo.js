@@ -84,15 +84,32 @@ async function main() {
   metricSelect.addEventListener("change", () => renderTable(data.summary, protocolSelect.value, metricSelect.value));
   cmSelect.addEventListener("change", () => renderConfusionMatrix(data, cmSelect.value));
 
-  // Upload inference
-  const fileInput = document.getElementById("upload-mat");
+  // Upload zip inference
+  const fileInput = document.getElementById("upload-zip");
   const featureSelect = document.getElementById("feature-type-upload");
   const runBtn = document.getElementById("run-upload-infer");
   const statusEl = document.getElementById("upload-status");
   const summaryEl = document.getElementById("upload-summary");
   const tableEl = document.getElementById("upload-table");
 
+  function renderProtocolMetricRow(name, m) {
+    if (!m || !m.overall) {
+      return `<tr><td>${name}</td><td>-</td><td>-</td><td>0</td><td>0</td></tr>`;
+    }
+    return `
+      <tr>
+        <td>${name}</td>
+        <td>${fmt(m.overall.accuracy)}</td>
+        <td>${fmt(m.overall.macro_f1)}</td>
+        <td>${m.coverage.valid_trials}</td>
+        <td>${m.coverage.expected_trials}</td>
+      </tr>
+    `;
+  }
+
   function renderUploadResult(result) {
+    const sd = result.protocols.subject_dependent;
+    const si = result.protocols.subject_independent;
     const distItems = Object.entries(result.counts).sort((a, b) => b[1] - a[1]);
     const distRowsHtml = distItems
       .map(([k, v]) => {
@@ -104,6 +121,7 @@ async function main() {
     const topRows = (result.top_trials_by_confidence || []).map(
       (r) => `
         <tr>
+          <td>${r.subject}</td>
           <td>${r.trial}</td>
           <td>${r.pred_label}</td>
           <td>${fmt(r.confidence)}</td>
@@ -112,16 +130,41 @@ async function main() {
     );
 
     const cs = result.confidence_stats || {};
+    const uploadedSubjects = (result.uploaded_subjects || []).join(", ");
     summaryEl.innerHTML = `
       <div class="card card-soft">
-        <p><strong>上传推理完成</strong>：共 ${result.total_trials} 个 trial，主导情绪为 <strong>${result.dominant_label}</strong></p>
-        <p><strong>模型</strong>：${result.model_type}；<strong>特征</strong>：${result.feature_type_used}</p>
+        <p><strong>上传分析完成</strong>：共 ${result.total_trials} 个有效 trial，主导情绪为 <strong>${result.dominant_label}</strong></p>
+        <p><strong>上传被试数</strong>：${result.uploaded_subjects_count}（subject: ${uploadedSubjects || "无"}）</p>
+        <p><strong>特征</strong>：${result.feature_type_used}；<strong>模型</strong>：LR + MLP（SEED 两协议）</p>
         <div class="kpi-grid">
           <div class="kpi"><div class="kpi-label">置信度均值</div><div class="kpi-value">${fmt(cs.mean ?? 0)}</div></div>
           <div class="kpi"><div class="kpi-label">置信度中位数</div><div class="kpi-value">${fmt(cs.median ?? 0)}</div></div>
           <div class="kpi"><div class="kpi-label">置信度最小值</div><div class="kpi-value">${fmt(cs.min ?? 0)}</div></div>
           <div class="kpi"><div class="kpi-label">置信度最大值</div><div class="kpi-value">${fmt(cs.max ?? 0)}</div></div>
         </div>
+      </div>
+      <div style="height: 10px;"></div>
+      <div class="card card-soft">
+        <h3 style="margin:0 0 10px;">上传子集协议指标（Accuracy / Macro-F1）</h3>
+        <h4 style="margin:10px 0 8px;">subject_dependent</h4>
+        <table>
+          <thead><tr><th>模型</th><th>Accuracy</th><th>Macro-F1</th><th>有效trial</th><th>期望trial</th></tr></thead>
+          <tbody>
+            ${renderProtocolMetricRow("LR", sd.lr)}
+            ${renderProtocolMetricRow("MLP", sd.mlp)}
+          </tbody>
+        </table>
+        <h4 style="margin:10px 0 8px;">subject_independent</h4>
+        <table>
+          <thead><tr><th>模型</th><th>Accuracy</th><th>Macro-F1</th><th>有效trial</th><th>期望trial</th></tr></thead>
+          <tbody>
+            ${renderProtocolMetricRow("LR", si.lr)}
+            ${renderProtocolMetricRow("MLP", si.mlp)}
+          </tbody>
+        </table>
+        <p class="subtitle">
+          说明：若 zip 中某些 session 缺失或无法对齐到真实标签，指标会按有效覆盖样本计算（valid/expected）。
+        </p>
       </div>
     `;
 
@@ -135,12 +178,12 @@ async function main() {
       </div>
       <div style="height: 10px;"></div>
       <div class="card card-soft">
-        <h3 style="margin:0 0 10px;">最高置信度的 15 条 trial（用于快速观察）</h3>
+        <h3 style="margin:0 0 10px;">最高置信度的 15 条 trial（跨上传子集）</h3>
         <table>
-          <thead><tr><th>trial</th><th>预测情绪</th><th>置信度</th></tr></thead>
+          <thead><tr><th>subject</th><th>trial</th><th>预测情绪</th><th>置信度</th></tr></thead>
           <tbody>${topRows.join("")}</tbody>
         </table>
-        <p class="subtitle">说明：置信度来自模型的 softmax 概率（被选中的类别对应概率）。</p>
+        <p class="subtitle">说明：置信度来自模型输出 softmax 概率（参考 subject_independent LR 预测集合）。</p>
       </div>
     `;
   }
@@ -148,15 +191,15 @@ async function main() {
   runBtn.addEventListener("click", async () => {
     const file = fileInput.files && fileInput.files[0];
     if (!file) {
-      statusEl.textContent = "请先选择 .mat 文件。";
+      statusEl.textContent = "请先选择 .zip 文件。";
       return;
     }
-    statusEl.textContent = "正在加载推理环境并解析 .mat，请稍候...";
+    statusEl.textContent = "正在加载环境并解析 zip（mat + csv），请稍候...";
     summaryEl.innerHTML = "";
     tableEl.innerHTML = "";
     runBtn.disabled = true;
     try {
-      const result = await window.UploadInference.runUploadedMatInference(file, featureSelect.value);
+      const result = await window.UploadInference.runUploadedZipAnalysis(file, featureSelect.value);
       statusEl.textContent = "上传分析完成。";
       renderUploadResult(result);
     } catch (err) {

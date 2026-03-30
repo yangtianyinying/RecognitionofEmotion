@@ -27,15 +27,18 @@
           <li>
             打开 <a href="./demo.html">交互</a>：
             <ul>
-              <li>如果你想“做预测”：上传你生成的特征 `.mat`（与 `data/EEG_features` 同结构），选择特征类型（`de_lds / de / psd`），然后点击“开始分析”。</li>
-              <li>如果你想“看基线”：不上传文件，使用页面下方的协议/指标下拉框，查看默认模型在两种评估协议下的汇总结果和平均混淆矩阵。</li>
+              <li>如果你想“做上传子集分析”：上传一个 zip，目录必须是 `EEF_features/` 与 `save_info/`。</li>
+              <li>zip 内文件命名：`EEF_features/&lt;subject&gt;.mat` 与 `save_info/&lt;subject&gt;_&lt;date&gt;_&lt;session&gt;_save_info.csv`。</li>
+              <li>建议每个被试都放 4 个 session 的 `save_info`（1..4），这样 trial 覆盖更完整（1..80）。</li>
+              <li>如果你想“看默认基线”：不上传文件，使用页面下方的协议/指标下拉框查看已有结果。</li>
             </ul>
           </li>
           <li>
             打开 <a href="./report.html">报告</a>：
             <ul>
-              <li>如果你想“更像实验报告”：上传 `.mat` 特征文件，点击“生成报告”，页面会给出该文件对应的预测分布、置信度统计以及解释说明。</li>
-              <li>如果你不上传文件：页面会展示默认基线报告（两种协议的结果表格 + 静态图表），适合直接写作业/论文。</li>
+              <li>上传 zip 后：页面会给出 subject_dependent 与 subject_independent 两协议的 Accuracy/Macro-F1。</li>
+              <li>上传缺失时：按“有效覆盖样本”计算，并显示 valid/expected 覆盖率。</li>
+              <li>不上传时：页面展示默认基线报告（两种协议表格 + 静态图）。</li>
             </ul>
           </li>
           <li>
@@ -66,9 +69,10 @@
       <section class="card">
         <h2>上传文件注意事项（非常重要）</h2>
         <ul>
-          <li>网页端上传/推理仅使用“特征级 `.mat` 文件”，不包含原始 EEG 也不进行滤波/去伪迹。</li>
-          <li>上传的 `.mat` 需要与本项目特征命名规则一致，例如 `de_lds_1` / `de_lds_2` ... / `de_lds_80` 这类 key（或对应的 `de_`、`psd_` 前缀）。</li>
-          <li>由于上传 `.mat` 本身通常不自带真实标签，因此上传报告默认不计算 Accuracy / Macro-F1；如果你提供真实标签（在本地计算后），下一步可以把指标也展示到网页。</li>
+          <li>zip 结构必须固定：`EEF_features/` + `save_info/`（目录名区分大小写）。</li>
+          <li>`EEF_features/*.mat` 需包含 `de_LDS_1..80`（或 `de_1..80` / `psd_1..80`）这类特征 key。</li>
+          <li>`save_info/*.csv` 每个 session 固定 20 行；情绪从第2列电影路径倒数第二段提取（如 `...\\happy\\xxx.mp4`）。</li>
+          <li>首次上传时会加载 Pyodide 和 JSZip，等待时间会比后续更长。</li>
         </ul>
       </section>
     </main>

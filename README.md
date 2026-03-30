@@ -7,6 +7,7 @@
 - `src/data/build_manifest.py`：构建 trial 级 manifest 与标签映射
 - `src/ml/train_ml.py`：机器学习基线（LR/SVM/RF）
 - `src/dl/train_mlp.py`：深度学习基线（MLP）
+- `src/ml/export_web_protocol_models.py`：导出网页端协议模型（LR+MLP；subject_dependent / subject_independent）
 - `src/visualization/build_assets.py`：汇总结果并生成图表与网页 JSON
 - `outputs/json/`：实验结果（可复用）
 - `outputs/figures/`：静态图表
@@ -29,7 +30,8 @@ python run_pipeline.py
 1. 生成 `manifest.jsonl`
 2. 训练 ML 基线
 3. 训练 DL 基线（MLP）
-4. 生成图表和网页数据 `docs/assets/results.json`
+4. 导出网页端协议模型 JSON（用于 zip 上传后计算 Accuracy/Macro-F1）
+5. 生成图表和网页数据 `docs/assets/results.json`
 
 ## 4. 单步运行
 
@@ -37,6 +39,7 @@ python run_pipeline.py
 python src/data/build_manifest.py
 python src/ml/train_ml.py
 python src/dl/train_mlp.py
+python src/ml/export_web_protocol_models.py
 python src/visualization/build_assets.py
 ```
 
@@ -53,7 +56,5 @@ python src/visualization/build_assets.py
 
 - 页面源码：`docs/`
 - 数据来源：`docs/assets/results.json`
+- 上传 zip 协议模型：`docs/assets/protocol_models_*.json`
 - 自动部署工作流：`.github/workflows/deploy-pages.yml`
-
-# RecognitionofEmotion
-# RecognitionofEmotion
