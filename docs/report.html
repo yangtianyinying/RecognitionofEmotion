@@ -24,6 +24,13 @@
         <p class="subtitle">
           不上传时显示默认基线报告；上传后会基于该文件实时生成预测分布报告（浏览器端推理）。
         </p>
+        <p class="subtitle" style="margin-top: 10px;">
+          说明：实时“上传报告”是基于导出的 <code>Logistic Regression</code> 进行推理（文件：`docs/assets/web_model.json`）。
+          因为上传 `.mat` 通常不携带真实标签，所以该报告默认不会给出 Accuracy / Macro-F1 等评估指标。
+        </p>
+        <p class="subtitle" style="margin-top: 10px;">
+          为获得更稳定的解析速度：首次点击“生成报告”时需要加载 Pyodide（用于解析 `.mat`），可能会等待一小段时间。
+        </p>
         <div class="controls">
           <input id="upload-mat-report" type="file" accept=".mat" />
           <label for="feature-type-report">特征类型：</label>

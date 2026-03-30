@@ -156,6 +156,37 @@ th {
   background: #f8fafc;
 }
 
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.kpi {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: var(--subtext);
+  margin-bottom: 4px;
+}
+
+.kpi-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .figure-grid {
   display: grid;
   grid-template-columns: 1fr;

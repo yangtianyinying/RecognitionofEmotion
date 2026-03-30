@@ -93,37 +93,55 @@ async function main() {
   const tableEl = document.getElementById("upload-table");
 
   function renderUploadResult(result) {
-    const distHtml = Object.entries(result.counts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([k, v]) => `<span class="chip">${k}: ${v}</span>`)
+    const distItems = Object.entries(result.counts).sort((a, b) => b[1] - a[1]);
+    const distRowsHtml = distItems
+      .map(([k, v]) => {
+        const pct = (v / Math.max(result.total_trials, 1)) * 100;
+        return `<tr><td>${k}</td><td>${v}</td><td>${pct.toFixed(1)}%</td></tr>`;
+      })
       .join("");
+
+    const topRows = (result.top_trials_by_confidence || []).map(
+      (r) => `
+        <tr>
+          <td>${r.trial}</td>
+          <td>${r.pred_label}</td>
+          <td>${fmt(r.confidence)}</td>
+        </tr>
+      `
+    );
+
+    const cs = result.confidence_stats || {};
     summaryEl.innerHTML = `
       <div class="card card-soft">
-        <p><strong>分析完成</strong>：共 ${result.total_trials} 个 trial，主导情绪为 <strong>${result.dominant_label}</strong></p>
-        <p><strong>模型</strong>：${result.model_type}，<strong>特征类型</strong>：${result.feature_type_used}</p>
-        <p>${distHtml}</p>
+        <p><strong>上传推理完成</strong>：共 ${result.total_trials} 个 trial，主导情绪为 <strong>${result.dominant_label}</strong></p>
+        <p><strong>模型</strong>：${result.model_type}；<strong>特征</strong>：${result.feature_type_used}</p>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="kpi-label">置信度均值</div><div class="kpi-value">${fmt(cs.mean ?? 0)}</div></div>
+          <div class="kpi"><div class="kpi-label">置信度中位数</div><div class="kpi-value">${fmt(cs.median ?? 0)}</div></div>
+          <div class="kpi"><div class="kpi-label">置信度最小值</div><div class="kpi-value">${fmt(cs.min ?? 0)}</div></div>
+          <div class="kpi"><div class="kpi-label">置信度最大值</div><div class="kpi-value">${fmt(cs.max ?? 0)}</div></div>
+        </div>
       </div>
     `;
-    const rows = result.rows
-      .slice(0, 20)
-      .map(
-        (r) => `
-          <tr>
-            <td>${r.trial}</td>
-            <td>${r.pred_label}</td>
-            <td>${fmt(r.confidence)}</td>
-          </tr>
-        `
-      )
-      .join("");
+
     tableEl.innerHTML = `
-      <table>
-        <thead>
-          <tr><th>trial</th><th>预测情绪</th><th>置信度</th></tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <p class="subtitle">仅展示前 20 条预测，完整结果可在后续版本增加导出。</p>
+      <div class="card card-soft">
+        <h3 style="margin:0 0 10px;">预测分布（次数 / 占比）</h3>
+        <table>
+          <thead><tr><th>情绪</th><th>次数</th><th>占比</th></tr></thead>
+          <tbody>${distRowsHtml}</tbody>
+        </table>
+      </div>
+      <div style="height: 10px;"></div>
+      <div class="card card-soft">
+        <h3 style="margin:0 0 10px;">最高置信度的 15 条 trial（用于快速观察）</h3>
+        <table>
+          <thead><tr><th>trial</th><th>预测情绪</th><th>置信度</th></tr></thead>
+          <tbody>${topRows.join("")}</tbody>
+        </table>
+        <p class="subtitle">说明：置信度来自模型的 softmax 概率（被选中的类别对应概率）。</p>
+      </div>
     `;
   }
 

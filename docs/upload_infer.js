@@ -153,6 +153,39 @@ async function runUploadedMatInference(file, featureType) {
   }
 
   const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+
+  const confidences = rows.map((r) => r.confidence).slice().sort((a, b) => a - b);
+  const meanConf = confidences.reduce((a, b) => a + b, 0) / Math.max(confidences.length, 1);
+  const medianConf =
+    confidences.length % 2 === 1
+      ? confidences[(confidences.length - 1) / 2]
+      : (confidences[confidences.length / 2 - 1] + confidences[confidences.length / 2]) / 2;
+  const minConf = confidences[0] ?? 0;
+  const maxConf = confidences[confidences.length - 1] ?? 0;
+
+  const confByLabel = {};
+  for (const label of labels) {
+    confByLabel[label] = [];
+  }
+  for (const row of rows) {
+    confByLabel[row.pred_label].push(row.confidence);
+  }
+  const perLabelMeanConf = {};
+  for (const label of labels) {
+    const arr = confByLabel[label];
+    perLabelMeanConf[label] = arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+  }
+
+  const topTrials = rows
+    .slice()
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 15)
+    .map((r) => ({
+      trial: r.trial,
+      pred_label: r.pred_label,
+      confidence: r.confidence,
+    }));
+
   return {
     labels,
     rows,
@@ -161,6 +194,14 @@ async function runUploadedMatInference(file, featureType) {
     total_trials: rows.length,
     model_type: model.model_type,
     feature_type_used: featureType,
+    confidence_stats: {
+      mean: meanConf,
+      median: medianConf,
+      min: minConf,
+      max: maxConf,
+    },
+    per_label_confidence_mean: perLabelMeanConf,
+    top_trials_by_confidence: topTrials,
   };
 }
 

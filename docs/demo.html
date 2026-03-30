@@ -24,6 +24,13 @@
         <p class="subtitle">
           上传与你当前 `data/EEG_features` 同结构的 `.mat` 特征文件，网页会直接进行推理（浏览器端，不依赖后端）。
         </p>
+        <p class="subtitle" style="margin-top: 10px;">
+          说明：当前网页端推理只使用导出的 <code>Logistic Regression</code>（文件：`docs/assets/web_model.json`）。
+          如果你想用 SVM / RandomForest / MLP 推理，需要重新导出对应的浏览器可用模型。
+        </p>
+        <p class="subtitle" style="margin-top: 10px;">
+          首次点击“开始分析”时，浏览器需要加载 Pyodide（用于解析 `.mat`），因此可能会慢一些，这是正常的。
+        </p>
         <div class="controls">
           <input id="upload-mat" type="file" accept=".mat" />
           <label for="feature-type-upload">特征类型：</label>
