@@ -38,6 +38,29 @@ async function main() {
   const data = await resp.json();
 
   renderDatasetSummary(data.dataset);
+  const explainEl = document.getElementById("default-analysis-explain");
+  explainEl.innerHTML = `
+    <h3 style="margin:0 0 8px;">1) 数据如何转成可分析样本</h3>
+    <ul>
+      <li>输入来自 EEG 特征文件（trial级，常用 key 如 \`de_LDS_1..80\`）。</li>
+      <li>每个 trial 的三维特征先在时间窗口上做均值聚合，得到固定长度向量。</li>
+      <li>真实标签来自 \`save_info\`：从电影路径中提取情绪类别（如 happy/sad/anger）。</li>
+    </ul>
+
+    <h3 style="margin:12px 0 8px;">2) 如何做情绪分析</h3>
+    <ul>
+      <li>在同一批 trial 特征上训练/评估 LR、MLP 等模型，输出情绪类别预测。</li>
+      <li><strong>subject_dependent</strong>：同一被试内划分训练/测试，关注个体内识别能力。</li>
+      <li><strong>subject_independent</strong>：按被试分组做跨被试评估，关注泛化能力。</li>
+    </ul>
+
+    <h3 style="margin:12px 0 8px;">3) 指标怎么读</h3>
+    <ul>
+      <li><strong>Accuracy</strong>：整体正确率，越高越好。</li>
+      <li><strong>Macro-F1</strong>：各情绪类别 F1 的平均，更能反映类别不均衡时的表现。</li>
+      <li>报告中的 \`mean ± std\` 表示多折/多被试评估下的平均水平与波动。</li>
+    </ul>
+  `;
 
   // 默认：按 accuracy_mean 排序，报告页用于“看结果”
   renderTable(data.summary, "table-subject-dependent", "subject_dependent", "accuracy_mean");
@@ -146,7 +169,7 @@ async function main() {
             <thead><tr><th>模型</th><th>Accuracy</th><th>Macro-F1</th><th>有效trial</th><th>期望trial</th><th>Coverage</th></tr></thead>
             <tbody>${renderProtocolOverallRows(si)}</tbody>
           </table>
-          <p class="subtitle">说明：你选择了“缺失数据跳过”，所以指标基于有效覆盖样本计算。</p>
+          <p class="subtitle">说明：指标基于有效覆盖样本计算（valid/expected）。</p>
         </div>
 
         <div class="card card-soft" style="padding: 12px; margin-top: 12px;">
@@ -173,7 +196,7 @@ async function main() {
           </table>
         </div>
 
-        <p class="subtitle">说明：为保证和 SEED 划分一致，subject_dependent 使用“按被试测试trial列表”，subject_independent 使用“按fold测试subject列表”。</p>
+        <p class="subtitle">实时实验报告仅展示结果与指标，不附带默认解析说明。</p>
       </div>
     `;
   }
