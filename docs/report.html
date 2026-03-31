@@ -88,10 +88,32 @@
 
       <section class="card">
         <h2>静态图表（可用于汇报）</h2>
-        <div class="figure-grid">
-          <img src="./assets/figures/model_accuracy.png" alt="model accuracy" />
-          <img src="./assets/figures/model_macro_f1.png" alt="model macro f1" />
-          <img src="./assets/figures/confusions.png" alt="confusion matrices" />
+        <div class="figure-grid paper-figures">
+          <figure class="paper-figure">
+            <img src="./assets/figures/model_accuracy.png" alt="Figure 1 model accuracy comparison" />
+            <figcaption><strong>图1.</strong> 不同模型在两种协议下的 Accuracy 对比（均值与波动）。</figcaption>
+            <p class="figure-note">
+              解析：用于比较模型整体正确率。若某模型在
+              <code>subject_independent</code>
+              下仍保持较高 Accuracy，说明其跨被试泛化能力更强。
+            </p>
+          </figure>
+
+          <figure class="paper-figure">
+            <img src="./assets/figures/model_macro_f1.png" alt="Figure 2 model macro f1 comparison" />
+            <figcaption><strong>图2.</strong> 不同模型在两种协议下的 Macro-F1 对比（均值与波动）。</figcaption>
+            <p class="figure-note">
+              解析：Macro-F1 对类别不均衡更敏感。若 Accuracy 高但 Macro-F1 低，通常说明模型偏向多数类别，少数情绪识别不足。
+            </p>
+          </figure>
+
+          <figure class="paper-figure">
+            <img src="./assets/figures/confusions.png" alt="Figure 3 average confusion matrices" />
+            <figcaption><strong>图3.</strong> 各模型平均混淆矩阵（按协议汇总）。</figcaption>
+            <p class="figure-note">
+              解析：观察混淆矩阵可定位“容易互相误判”的情绪对（例如 sadness 与 neutral）。这能指导后续特征工程与模型改进方向。
+            </p>
+          </figure>
         </div>
       </section>
     </main>

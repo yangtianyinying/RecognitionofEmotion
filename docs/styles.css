@@ -200,6 +200,29 @@ th {
   background: #fff;
 }
 
+.paper-figures {
+  gap: 18px;
+}
+
+.paper-figure {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.paper-figure figcaption {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.figure-note {
+  margin: 8px 0 0;
+  color: var(--subtext);
+  font-size: 13px;
+}
+
 a {
   color: var(--primary);
 }

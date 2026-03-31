@@ -90,10 +90,24 @@
 
       <section class="card">
         <h2>静态图表（可用于汇报）</h2>
-        <div class="figure-grid">
-          <img src="./assets/figures/model_accuracy.png" alt="model accuracy" />
-          <img src="./assets/figures/model_macro_f1.png" alt="model macro f1" />
-          <img src="./assets/figures/confusions.png" alt="confusion matrices" />
+        <div class="figure-grid paper-figures">
+          <figure class="paper-figure">
+            <img src="./assets/figures/model_accuracy.png" alt="Figure 1 model accuracy comparison" />
+            <figcaption><strong>图1.</strong> 模型 Accuracy 对比（subject_dependent / subject_independent）。</figcaption>
+            <p class="figure-note">用于快速比较不同模型的整体正确率水平。</p>
+          </figure>
+
+          <figure class="paper-figure">
+            <img src="./assets/figures/model_macro_f1.png" alt="Figure 2 model macro f1 comparison" />
+            <figcaption><strong>图2.</strong> 模型 Macro-F1 对比（subject_dependent / subject_independent）。</figcaption>
+            <p class="figure-note">用于观察类别均衡表现，避免只看 Accuracy 造成误判。</p>
+          </figure>
+
+          <figure class="paper-figure">
+            <img src="./assets/figures/confusions.png" alt="Figure 3 average confusion matrices" />
+            <figcaption><strong>图3.</strong> 平均混淆矩阵图。</figcaption>
+            <p class="figure-note">用于定位最易混淆的情绪类别组合，辅助后续优化。</p>
+          </figure>
         </div>
       </section>
     </main>

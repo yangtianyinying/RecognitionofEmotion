@@ -33,33 +33,62 @@ function renderTable(summary, tableId, protocol, metric) {
     .join("");
 }
 
+function findSummary(summary, protocol, model) {
+  return summary.find((x) => x.protocol === protocol && x.model === model);
+}
+
 async function main() {
   const resp = await fetch("./assets/results.json");
   const data = await resp.json();
 
   renderDatasetSummary(data.dataset);
   const explainEl = document.getElementById("default-analysis-explain");
+  const sdLR = findSummary(data.summary, "subject_dependent", "logistic_regression");
+  const sdRF = findSummary(data.summary, "subject_dependent", "random_forest");
+  const sdSVM = findSummary(data.summary, "subject_dependent", "svm_rbf");
+  const sdMLP = findSummary(data.summary, "subject_dependent", "mlp");
+  const siLR = findSummary(data.summary, "subject_independent", "logistic_regression");
+  const siRF = findSummary(data.summary, "subject_independent", "random_forest");
+  const siSVM = findSummary(data.summary, "subject_independent", "svm_rbf");
+  const siMLP = findSummary(data.summary, "subject_independent", "mlp");
+
   explainEl.innerHTML = `
-    <h3 style="margin:0 0 8px;">1) 数据如何转成可分析样本</h3>
-    <ul>
-      <li>输入来自 EEG 特征文件（trial级，常用 key 如 \`de_LDS_1..80\`）。</li>
-      <li>每个 trial 的三维特征先在时间窗口上做均值聚合，得到固定长度向量。</li>
-      <li>真实标签来自 \`save_info\`：从电影路径中提取情绪类别（如 happy/sad/anger）。</li>
-    </ul>
+    <h2 style="margin:0 0 10px;">报告解析</h2>
 
-    <h3 style="margin:12px 0 8px;">2) 如何做情绪分析</h3>
-    <ul>
-      <li>在同一批 trial 特征上训练/评估 LR、MLP 等模型，输出情绪类别预测。</li>
-      <li><strong>subject_dependent</strong>：同一被试内划分训练/测试，关注个体内识别能力。</li>
-      <li><strong>subject_independent</strong>：按被试分组做跨被试评估，关注泛化能力。</li>
-    </ul>
+    <h3 style="margin:10px 0 8px;">数据转换</h3>
+    <p>
+      默认报告基于 trial 级 EEG 特征进行构建。系统先读取 \`de_LDS_1..80\`（或同结构的 \`de_*\`、\`psd_*\`）特征键，再对每个 trial 的时间窗口特征做均值聚合，
+      得到固定长度向量。与此同时，真实标签由 \`save_info\` 提供：通过电影路径中的情绪目录名提取类别，最终形成“每个 trial 一条特征向量 + 一个情绪标签”的监督样本。
+      这个转换过程的核心价值在于，把原始复杂时序信号转化为可比较、可统计、可复现实验的结构化数据。
+    </p>
 
-    <h3 style="margin:12px 0 8px;">3) 指标怎么读</h3>
-    <ul>
-      <li><strong>Accuracy</strong>：整体正确率，越高越好。</li>
-      <li><strong>Macro-F1</strong>：各情绪类别 F1 的平均，更能反映类别不均衡时的表现。</li>
-      <li>报告中的 \`mean ± std\` 表示多折/多被试评估下的平均水平与波动。</li>
-    </ul>
+    <h3 style="margin:12px 0 8px;">情绪分析</h3>
+    <p>
+      在默认报告中，模型比较分为传统机器学习（Logistic Regression、Random Forest、SVM-RBF）与深度学习基线（MLP）两组。结果显示，在
+      <code>subject_dependent</code>
+      场景下，Logistic Regression 的 Accuracy 约为 <strong>${fmt(sdLR?.accuracy_mean ?? 0)}</strong>、Macro-F1 约为
+      <strong>${fmt(sdLR?.macro_f1_mean ?? 0)}</strong>，明显高于 Random Forest（Accuracy
+      <strong>${fmt(sdRF?.accuracy_mean ?? 0)}</strong>）和 MLP（Accuracy <strong>${fmt(sdMLP?.accuracy_mean ?? 0)}</strong>）。
+      这说明在被试内设置里，线性基线对当前特征表达具有较强适配性。到了 <code>subject_independent</code> 场景，MLP 的 Accuracy 约为
+      <strong>${fmt(siMLP?.accuracy_mean ?? 0)}</strong>，与 LR 的 <strong>${fmt(siLR?.accuracy_mean ?? 0)}</strong> 接近，
+      但 Macro-F1 上 LR（<strong>${fmt(siLR?.macro_f1_mean ?? 0)}</strong>）略高于 MLP（<strong>${fmt(siMLP?.macro_f1_mean ?? 0)}</strong>），
+      反映出跨被试泛化时，深度模型和线性模型各有取舍。
+    </p>
+
+    <h3 style="margin:12px 0 8px;">指标解读</h3>
+    <p>
+      Accuracy 用于回答“总体上预测对了多少”，而 Macro-F1 用于回答“各个情绪类别是否都被公平地识别”。当一个模型 Accuracy 不低但 Macro-F1 明显偏低时，
+      常见原因是模型对多数类别更友好、对少数类别识别不足。报告中的
+      <code>mean ± std</code>
+      表示多折或多被试评估下的平均性能与波动范围：均值越高说明整体能力越强，标准差越小说明稳定性越好。
+    </p>
+
+    <h3 style="margin:12px 0 8px;">数据分析总结</h3>
+    <p>
+      结合表格与图像可以得到一个较清晰的结论：当前特征体系下，默认基线在被试内场景明显优于跨被试场景，说明“个体差异”仍是核心挑战。图1与图2显示不同模型在两协议下存在一致的性能下滑趋势，
+      图3（混淆矩阵）中的非对角元素也提示了情绪间可分性仍有限，尤其在语义接近或唤醒度相近的类别上更容易互相误判。整体而言，默认报告证明了流程可复现、模型可比较，但若要进一步提升跨被试能力，
+      仍需在特征鲁棒性、域间对齐与模型泛化策略上继续迭代。
+    </p>
   `;
 
   // 默认：按 accuracy_mean 排序，报告页用于“看结果”

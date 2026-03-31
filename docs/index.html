@@ -22,44 +22,83 @@
 
     <main class="container">
       <section class="card">
+        <h2>概念解析</h2>
+        <h3>de_lds 的含义</h3>
+        <p>
+          de_lds 是当前项目中最核心的特征之一。它可以理解为“经过时间平滑后的微分熵（Differential Entropy）”特征：先从每个频带提取微分熵，再通过类似
+          LDS 的平滑方式减少瞬时噪声，使得 trial 级特征在时间上更稳定。在 EEG 情绪识别中，这类平滑处理通常能让模型更容易学习到稳定的情绪模式。
+        </p>
+
+        <h3>de 的含义</h3>
+        <p>
+          de 指微分熵特征，是 EEG 频带能量分布的一种常见统计表达。与原始波形相比，de 更接近“信息量/不确定性”的表示方式，常用于把高维时序信号压缩成可用于分类的结构化特征。
+          在本项目中，de 通常与 trial、频带、通道三个维度共同组织。
+        </p>
+
+        <h3>pas 的含义</h3>
+        <p>
+          你这里写的 pas 在 EEG 特征语境里通常对应 PSD（Power Spectral Density，功率谱密度）。PSD 描述不同频率成分上的能量分布，是最经典也最直观的频域特征之一。
+          当你在页面中选择 psd 特征类型时，本质上就是让模型基于频带功率信息进行情绪分类。
+        </p>
+
+        <h3>logistic_regression 的介绍</h3>
+        <p>
+          Logistic Regression 是一个线性分类器，参数可解释性强、训练速度快，常作为情绪识别实验的基线模型。它对特征尺度较敏感，因此通常与标准化一起使用。
+          在本项目里，它的作用是提供一个“简单但稳定”的参照，帮助你判断更复杂模型是否真的带来增益。
+        </p>
+
+        <h3>random_forest 的介绍</h3>
+        <p>
+          Random Forest 是由多棵决策树组成的集成模型，擅长处理非线性关系，对特征分布的鲁棒性较好。它往往能在较少调参的情况下得到可用结果，但在跨被试泛化上不一定总优于线性模型。
+          在你的报告中，它更适合作为“非线性传统机器学习”代表进行比较。
+        </p>
+
+        <h3>svm_rbf 的介绍</h3>
+        <p>
+          SVM（RBF 核）通过核函数在隐空间构造非线性决策边界，理论上可表达复杂分类边界。它对参数（如 C、gamma）较敏感，参数选择不当时可能欠拟合或过拟合。
+          在 EEG 情绪任务中，SVM 常见但需要细致调参，适合与 LR 做“线性 vs 非线性”对照。
+        </p>
+
+        <h3>mlp 的介绍</h3>
+        <p>
+          MLP 是最基础的前馈神经网络，通过多层线性变换与非线性激活学习特征组合关系。相较传统模型，MLP 具有更高表达能力，但也更依赖训练细节（如标准化、学习率、早停、验证划分）。
+          在本项目中，MLP 是深度学习最小可运行基线，用来承接从传统机器学习到深度学习的学习路径。
+        </p>
+      </section>
+
+      <section class="card">
         <h2>报告页面的功能</h2>
-        <ul>
-          <li>入口：<a href="./report.html">report.html</a></li>
-          <li>上传 zip 后，输出更像实验报告的结果：subject_dependent 与 subject_independent 两协议的 Accuracy / Macro-F1。</li>
-          <li>展示覆盖率（valid_trials / expected_trials），用于说明上传数据是否完整。</li>
-          <li>展示按被试/按fold的明细结果，便于你做分析与汇报。</li>
-          <li>不上传时，展示默认基线报告与结果表格。</li>
-        </ul>
+        <p>
+          报告页面（<a href="./report.html">report.html</a>）承担“结构化实验呈现”的角色。你可以在该页面查看默认基线报告，也可以上传 zip 生成实时实验报告。
+          页面会给出 subject_dependent 与 subject_independent 两种协议下的 Accuracy 和 Macro-F1，并展示覆盖率信息，帮助你判断当前上传数据是否足以支撑结论。
+          如果你要写课程报告或论文草稿，这个页面就是主要材料来源。
+        </p>
       </section>
 
       <section class="card">
         <h2>交互页面的功能</h2>
-        <ul>
-          <li>入口：<a href="./demo.html">demo.html</a></li>
-          <li>支持上传 zip 做实时分析（浏览器端解析与推理）。</li>
-          <li>展示上传子集指标摘要（两协议 + LR/MLP）和覆盖率提示。</li>
-          <li>保留预测分布、置信度统计、Top trial 等快速观察信息。</li>
-        </ul>
+        <p>
+          交互页面（<a href="./demo.html">demo.html</a>）强调“快速试验与直观观察”。在上传 zip 后，页面会实时解析特征与标签并给出协议指标摘要，同时保留预测分布、
+          置信度统计与高置信度 trial 的快速检查视图。相比报告页面，它更偏向调试与探索，让你先快速判断上传子集的质量，再回到报告页面做正式解读。
+        </p>
       </section>
 
       <section class="card">
         <h2>分析流程</h2>
-        <ol>
-          <li>准备 zip：`EEF_features/` + `save_info/`。</li>
-          <li>上传后解析 `.mat` 特征与 `save_info` 标签，按 trial 对齐真实值与预测值。</li>
-          <li>按 SEED 两协议计算 Accuracy / Macro-F1，并给出覆盖率说明。</li>
-          <li>在报告页查看结构化结果，在交互页查看可视化与细节。</li>
-        </ol>
+        <p>
+          分析流程从上传文件开始：系统先从 zip 中读取 `EEF_features` 与 `save_info`，再把 trial 级特征和真实情绪标签按照 session 与行序进行对齐。
+          对齐后，页面会基于预先导出的协议模型进行推理，分别汇总 subject_dependent 与 subject_independent 指标。最后，结果会被组织为可直接阅读的实验叙述，
+          形成“指标—解释—结论”的闭环，这也是你在报告页看到的核心结构。
+        </p>
       </section>
 
       <section class="card">
         <h2>上传说明</h2>
-        <ul>
-          <li>zip 结构必须固定：`EEF_features/` + `save_info/`（目录名区分大小写）。</li>
-          <li>`EEF_features/*.mat` 需包含 `de_LDS_1..80`（或 `de_1..80` / `psd_1..80`）这类特征 key。</li>
-          <li>`save_info/*.csv` 每个 session 固定 20 行；情绪从第2列电影路径倒数第二段提取（如 `...\\happy\\xxx.mp4`）。</li>
-          <li>首次上传时会加载 Pyodide 和 JSZip，等待时间会比后续更长。</li>
-        </ul>
+        <p>
+          上传文件必须是一个 zip，并且目录层级固定为 `EEF_features/` 与 `save_info/`。其中 `EEF_features/<subject>.mat` 用于提供 trial 特征，
+          `save_info/<subject>_<date>_<session>_save_info.csv` 用于恢复真实情绪标签。为了让 trial 覆盖完整，建议每个被试尽量提供 session 1 到 4 的
+          save_info 文件。首次上传时浏览器会加载 Pyodide 与 JSZip，因此启动会慢一些；后续再次上传通常会明显更快。
+        </p>
       </section>
     </main>
 
