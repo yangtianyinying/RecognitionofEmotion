@@ -2,6 +2,19 @@ function fmt(value) {
   return Number(value).toFixed(4);
 }
 
+function renderUploadConfusionMatrix(labels, matrix) {
+  let html = '<table class="matrix"><thead><tr><th>GT \\ Pred</th>';
+  html += labels.map((l) => `<th>${l}</th>`).join("");
+  html += "</tr></thead><tbody>";
+  for (let i = 0; i < matrix.length; i++) {
+    html += `<tr><th>${labels[i]}</th>`;
+    html += matrix[i].map((v) => `<td>${fmt(v)}</td>`).join("");
+    html += "</tr>";
+  }
+  html += "</tbody></table>";
+  return html;
+}
+
 function renderDatasetSummary(dataset) {
   const el = document.getElementById("dataset-summary");
   const labels = Object.entries(dataset.labels)
@@ -135,7 +148,7 @@ async function main() {
       <div class="card card-soft">
         <p><strong>上传分析完成</strong>：共 ${result.total_trials} 个有效 trial，主导情绪为 <strong>${result.dominant_label}</strong></p>
         <p><strong>上传被试数</strong>：${result.uploaded_subjects_count}（subject: ${uploadedSubjects || "无"}）</p>
-        <p><strong>特征</strong>：${result.feature_type_used}；<strong>模型</strong>：LR + MLP（SEED 两协议）</p>
+        <p><strong>特征</strong>：${result.feature_type_used}；<strong>模型</strong>：LR + MLP（SEED 两协议）+ 全量 LR（见下方）</p>
         <div class="kpi-grid">
           <div class="kpi"><div class="kpi-label">置信度均值</div><div class="kpi-value">${fmt(cs.mean ?? 0)}</div></div>
           <div class="kpi"><div class="kpi-label">置信度中位数</div><div class="kpi-value">${fmt(cs.median ?? 0)}</div></div>
@@ -166,6 +179,53 @@ async function main() {
           说明：若 zip 中某些 session 缺失或无法对齐到真实标签，指标会按有效覆盖样本计算（valid/expected）。
         </p>
       </div>
+      ${(() => {
+        const skip = result.global_model_skipped_reason;
+        const g = result.global_full_data_lr;
+        if (skip) {
+          return `<div style="height: 10px;"></div>
+      <div class="card card-soft">
+        <h3 style="margin:0 0 10px;">全 20 被试训练 LR（上传子集全 trial）</h3>
+        <p class="subtitle" style="color: var(--muted, #666);">未运行：${skip}</p>
+      </div>`;
+        }
+        if (!g || !g.overall) {
+          return "";
+        }
+        const dd = g.distribution_diff || {};
+        const distRows = (result.labels || []).map((l) => {
+          const pt = (dd.p_true && dd.p_true[l]) ?? 0;
+          const pp = (dd.p_pred && dd.p_pred[l]) ?? 0;
+          const ct = (dd.counts_true && dd.counts_true[l]) ?? 0;
+          const cp = (dd.counts_pred && dd.counts_pred[l]) ?? 0;
+          return `<tr><td>${l}</td><td>${ct}</td><td>${fmt(pt)}</td><td>${cp}</td><td>${fmt(pp)}</td></tr>`;
+        });
+        const perSub = (g.per_subject || [])
+          .map(
+            (x) =>
+              `<tr><td>${x.subject}</td><td>${fmt(x.accuracy)}</td><td>${fmt(x.macro_f1)}</td><td>${x.valid_trials}</td></tr>`
+          )
+          .join("");
+        return `<div style="height: 10px;"></div>
+      <div class="card card-soft">
+        <h3 style="margin:0 0 10px;">全 20 被试训练 LR（上传子集全 trial）</h3>
+        <p class="subtitle">在完整 manifest 上训练的单一逻辑回归；对 zip 内每个「特征与 save_info 同时对齐」的 trial 做预测，并与真值对比。</p>
+        <p><strong>Accuracy</strong>：${fmt(g.overall.accuracy)}；<strong>Macro-F1</strong>：${fmt(g.overall.macro_f1)}；<strong>有效 trial</strong>：${g.coverage.valid_trials} / ${g.coverage.expected_trials}</p>
+        <p><strong>分布差异（标量）</strong>：TVD（真值 vs 预测类别分布）=${fmt(dd.tvd ?? 0)}；熵（自然对数）真值=${fmt(dd.entropy_true ?? 0)}、预测=${fmt(dd.entropy_pred ?? 0)}、差=${fmt(dd.entropy_delta ?? 0)}</p>
+        <h4 style="margin:12px 0 8px;">按被试</h4>
+        <table>
+          <thead><tr><th>subject</th><th>Accuracy</th><th>Macro-F1</th><th>有效trial</th></tr></thead>
+          <tbody>${perSub || `<tr><td colspan="4">无</td></tr>`}</tbody>
+        </table>
+        <h4 style="margin:12px 0 8px;">混淆矩阵（行=真值，列=预测）</h4>
+        ${renderUploadConfusionMatrix(result.labels, g.overall.confusion)}
+        <h4 style="margin:12px 0 8px;">真值 / 预测 经验分布</h4>
+        <table>
+          <thead><tr><th>情绪</th><th>真值次数</th><th>真值比例</th><th>预测次数</th><th>预测比例</th></tr></thead>
+          <tbody>${distRows.join("")}</tbody>
+        </table>
+      </div>`;
+      })()}
     `;
 
     tableEl.innerHTML = `

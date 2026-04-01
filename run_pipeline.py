@@ -17,6 +17,7 @@ def main() -> None:
         [sys.executable, str(root / "src" / "ml" / "train_ml.py")],
         [sys.executable, str(root / "src" / "dl" / "train_mlp.py")],
         [sys.executable, str(root / "src" / "ml" / "export_web_protocol_models.py")],
+        [sys.executable, str(root / "src" / "ml" / "export_web_model.py")],
         [sys.executable, str(root / "src" / "visualization" / "build_assets.py")],
     ]
     for cmd in steps:

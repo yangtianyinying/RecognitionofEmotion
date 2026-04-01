@@ -1,5 +1,23 @@
 let pyodideReady = null;
+/** 并发安全：多入口同时 await 时只初始化一次 Pyodide */
+let pyodideInitPromise = null;
 let protocolModelsCache = null;
+let globalWebModelCache = null;
+
+const PYODIDE_VERSION = "0.27.2";
+
+/** 多个 indexURL，用于 jsDelivr 不可达时回退（如部分网络环境）。须与 scipy 等包同源。 */
+const PYODIDE_INDEX_URLS = [
+  `https://unpkg.com/pyodide@${PYODIDE_VERSION}/`,
+  `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`,
+  `https://cdn.jsdelivr.net/npm/pyodide@${PYODIDE_VERSION}/`,
+  `https://fastly.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`,
+];
+
+function normalizePyodideIndexURL(base) {
+  const s = String(base).trim();
+  return s.endsWith("/") ? s : `${s}/`;
+}
 
 function ensureScript(src) {
   return new Promise((resolve, reject) => {
@@ -16,15 +34,69 @@ function ensureScript(src) {
   });
 }
 
+function removePyodideScript(scriptUrl) {
+  const prev = [...document.getElementsByTagName("script")].find((x) => x.src === scriptUrl);
+  if (prev) prev.remove();
+  try {
+    delete window.loadPyodide;
+  } catch {
+    /* ignore */
+  }
+}
+
+async function initPyodideOnce(indexURL) {
+  const base = normalizePyodideIndexURL(indexURL);
+  const scriptUrl = `${base}pyodide.js`;
+  await ensureScript(scriptUrl);
+  if (typeof window.loadPyodide !== "function") {
+    removePyodideScript(scriptUrl);
+    throw new Error("loadPyodide 未定义");
+  }
+  const py = await window.loadPyodide({ indexURL: base });
+  // 须分别加载：解析 .mat 用 numpy + scipy.io；部分环境下数组参数可能未完整安装 numpy
+  await py.loadPackage("numpy");
+  await py.loadPackage("scipy");
+  await py.runPythonAsync("import numpy\nimport scipy.io");
+  return py;
+}
+
+/**
+ * 在运行含 numpy 的代码前调用。幂等；可修复「旧缓存 JS 只 load 了 scipy」导致的 numpy 缺失。
+ */
+async function ensurePyodideNumericLibs(py) {
+  await py.loadPackage("numpy");
+  await py.loadPackage("scipy");
+}
+
 async function getPyodide() {
   if (pyodideReady) return pyodideReady;
-  pyodideReady = (async () => {
-    await ensureScript("https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js");
-    const py = await window.loadPyodide();
-    await py.loadPackage("scipy");
-    return py;
-  })();
-  return pyodideReady;
+  if (!pyodideInitPromise) {
+    pyodideInitPromise = (async () => {
+      let lastErr = null;
+      for (const indexURL of PYODIDE_INDEX_URLS) {
+        const base = normalizePyodideIndexURL(indexURL);
+        const scriptUrl = `${base}pyodide.js`;
+        try {
+          return await initPyodideOnce(indexURL);
+        } catch (e) {
+          lastErr = e;
+          removePyodideScript(scriptUrl);
+        }
+      }
+      const hint =
+        "若你处于受限网络，可尝试：更换网络/VPN、使用可访问 unpkg 或 jsDelivr 的环境，或将 Pyodide 静态文件放到本地后自行改 PYODIDE_INDEX_URL。";
+      throw new Error(
+        `Pyodide 无法加载（已尝试 ${PYODIDE_INDEX_URLS.length} 个 CDN）。${lastErr ? `最后错误：${lastErr.message || lastErr}。` : ""} ${hint}`
+      );
+    })();
+  }
+  try {
+    pyodideReady = await pyodideInitPromise;
+    return pyodideReady;
+  } catch (e) {
+    pyodideInitPromise = null;
+    throw e;
+  }
 }
 
 async function getProtocolModels() {
@@ -46,6 +118,122 @@ async function getProtocolModels() {
   );
   protocolModelsCache = Object.fromEntries(loaded);
   return protocolModelsCache;
+}
+
+async function getGlobalWebModel() {
+  if (globalWebModelCache) {
+    return { ok: true, model: globalWebModelCache };
+  }
+  const resp = await fetch("./assets/web_model.json");
+  if (!resp.ok) {
+    return {
+      ok: false,
+      error: `无法加载 web_model.json（HTTP ${resp.status}），请先运行 python src/ml/export_web_model.py。`,
+    };
+  }
+  const model = await resp.json();
+  globalWebModelCache = model;
+  return { ok: true, model };
+}
+
+function shannonEntropy(probs) {
+  const eps = 1e-12;
+  let h = 0;
+  for (const p of probs) {
+    if (p > eps) h -= p * Math.log(p);
+  }
+  return h;
+}
+
+function labelDistributionDiff(rows, labels) {
+  const n = rows.length;
+  const k = labels.length;
+  const zeros = () => new Array(k).fill(0);
+  if (!n) {
+    return {
+      p_true: Object.fromEntries(labels.map((l) => [l, 0])),
+      p_pred: Object.fromEntries(labels.map((l) => [l, 0])),
+      counts_true: Object.fromEntries(labels.map((l) => [l, 0])),
+      counts_pred: Object.fromEntries(labels.map((l) => [l, 0])),
+      tvd: 0,
+      entropy_true: 0,
+      entropy_pred: 0,
+      entropy_delta: 0,
+    };
+  }
+  const ct = zeros();
+  const cp = zeros();
+  for (const r of rows) {
+    ct[r.y_true] += 1;
+    cp[r.y_pred] += 1;
+  }
+  const pt = ct.map((c) => c / n);
+  const pp = cp.map((c) => c / n);
+  let tvd = 0;
+  for (let i = 0; i < k; i++) tvd += Math.abs(pt[i] - pp[i]);
+  tvd *= 0.5;
+  return {
+    p_true: Object.fromEntries(labels.map((l, i) => [l, pt[i]])),
+    p_pred: Object.fromEntries(labels.map((l, i) => [l, pp[i]])),
+    counts_true: Object.fromEntries(labels.map((l, i) => [l, ct[i]])),
+    counts_pred: Object.fromEntries(labels.map((l, i) => [l, cp[i]])),
+    tvd,
+    entropy_true: shannonEntropy(pt),
+    entropy_pred: shannonEntropy(pp),
+    entropy_delta: shannonEntropy(pp) - shannonEntropy(pt),
+  };
+}
+
+function evaluateGlobalLR(subjectData, model, labels) {
+  const allRows = [];
+  let expected = 0;
+  for (const data of Object.values(subjectData)) {
+    for (const tStr of Object.keys(data.featureByTrial)) {
+      const t = Number(tStr);
+      if (t in data.truthByTrial) expected += 1;
+    }
+  }
+  for (const [subject, data] of Object.entries(subjectData)) {
+    for (const tStr of Object.keys(data.featureByTrial)) {
+      const t = Number(tStr);
+      if (!(t in data.truthByTrial)) continue;
+      const pred = predictLR(data.featureByTrial[t], model);
+      allRows.push({
+        subject: Number(subject),
+        trial: t,
+        y_true: data.truthByTrial[t],
+        y_pred: pred.labelIndex,
+        pred_label: labels[pred.labelIndex],
+        confidence: pred.confidence,
+      });
+    }
+  }
+  const valid = allRows.length;
+  const perSubject = [];
+  for (const subject of Object.keys(subjectData)) {
+    const sid = Number(subject);
+    const rows = allRows.filter((r) => r.subject === sid);
+    if (rows.length) {
+      const m = computeMetrics(rows, labels.length);
+      perSubject.push({
+        subject: sid,
+        accuracy: m.accuracy,
+        macro_f1: m.macro_f1,
+        valid_trials: m.valid_trials,
+      });
+    }
+  }
+  perSubject.sort((a, b) => a.subject - b.subject);
+  const overall = computeMetrics(allRows, labels.length);
+  return {
+    model: "lr",
+    protocol: "full_manifest",
+    coverage: { expected_trials: expected, valid_trials: valid, ratio: expected ? valid / expected : 0 },
+    overall,
+    per_subject: perSubject,
+    rows: allRows,
+    distribution_diff: labelDistributionDiff(allRows, labels),
+  };
 }
 
 function softmax(logits) {
@@ -129,6 +317,7 @@ async function extractTrialFeaturesFromMatBytes(bytes, featureType) {
   const prefix = prefixMap[featureType];
   if (!prefix) throw new Error(`不支持的 featureType: ${featureType}`);
   const py = await getPyodide();
+  await ensurePyodideNumericLibs(py);
   py.globals.set("file_bytes", bytes);
   py.globals.set("feature_prefix", prefix);
   const pyCode = `
@@ -425,6 +614,22 @@ async function runUploadedZipAnalysis(zipFile, featureType) {
   const refRows = siLR.rows.length ? siLR.rows : sdLR.rows;
   const predSummary = summarizePredictions(refRows, labels);
 
+  let global_full_data_lr = null;
+  let global_model_skipped_reason = null;
+  const globalRes = await getGlobalWebModel();
+  if (!globalRes.ok) {
+    global_model_skipped_reason = globalRes.error;
+  } else {
+    const wm = globalRes.model;
+    if (wm.feature_type !== featureType) {
+      global_model_skipped_reason = `全量网页模型特征为「${wm.feature_type}」，与当前选择「${featureType}」不一致；请切换特征类型或重新导出匹配的 web_model.json。`;
+    } else if (JSON.stringify(wm.labels) !== JSON.stringify(labels)) {
+      global_model_skipped_reason = "web_model.json 与协议模型的标签列表不一致，已跳过全量模型评估。";
+    } else {
+      global_full_data_lr = evaluateGlobalLR(subjectData, wm, labels);
+    }
+  }
+
   return {
     labels,
     feature_type_used: featureType,
@@ -434,6 +639,8 @@ async function runUploadedZipAnalysis(zipFile, featureType) {
       subject_dependent: { lr: sdLR, mlp: sdMLP },
       subject_independent: { lr: siLR, mlp: siMLP },
     },
+    global_full_data_lr,
+    global_model_skipped_reason,
     ...predSummary,
     total_trials: refRows.length,
   };

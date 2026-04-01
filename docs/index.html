@@ -70,7 +70,8 @@
         <h2>报告页面的功能</h2>
         <p>
           报告页面（<a href="./report.html">report.html</a>）承担“结构化实验呈现”的角色。你可以在该页面查看默认基线报告，也可以上传 zip 生成实时实验报告。
-          页面会给出 subject_dependent 与 subject_independent 两种协议下的 Accuracy 和 Macro-F1，并展示覆盖率信息，帮助你判断当前上传数据是否足以支撑结论。
+          页面会给出 subject_dependent 与 subject_independent 两种协议下的 Accuracy 和 Macro-F1，并展示覆盖率信息，帮助你判断当前上传数据是否足以支撑结论；
+          同时会给出在<strong>全体被试数据上训练得到的单一逻辑回归（全量 LR）</strong>对你上传子集的预测结果，以及与 save_info 真值的分类差异和分布层面的标量对比（需与导出模型所用特征类型一致，默认 de_lds）。
           如果你要写课程报告或论文草稿，这个页面就是主要材料来源。
         </p>
       </section>
@@ -79,7 +80,7 @@
         <h2>交互页面的功能</h2>
         <p>
           交互页面（<a href="./demo.html">demo.html</a>）强调“快速试验与直观观察”。在上传 zip 后，页面会实时解析特征与标签并给出协议指标摘要，同时保留预测分布、
-          置信度统计与高置信度 trial 的快速检查视图。相比报告页面，它更偏向调试与探索，让你先快速判断上传子集的质量，再回到报告页面做正式解读。
+          置信度统计与高置信度 trial 的快速检查视图；并与报告页相同，附带<strong>全量 LR</strong>在上传数据上的指标与混淆矩阵。相比报告页面，它更偏向调试与探索，让你先快速判断上传子集的质量，再回到报告页面做正式解读。
         </p>
       </section>
 
@@ -87,8 +88,9 @@
         <h2>分析流程</h2>
         <p>
           分析流程从上传文件开始：系统先从 zip 中读取 `EEF_features` 与 `save_info`，再把 trial 级特征和真实情绪标签按照 session 与行序进行对齐。
-          对齐后，页面会基于预先导出的协议模型进行推理，分别汇总 subject_dependent 与 subject_independent 指标。最后，结果会被组织为可直接阅读的实验叙述，
-          形成“指标—解释—结论”的闭环，这也是你在报告页看到的核心结构。
+          对齐后，页面会做两类评估：<strong>协议评估</strong>使用预先导出的 LR/MLP，按 SEED 设定的 subject_dependent / subject_independent 测试划分汇总指标；
+          <strong>全量单模型评估</strong>使用在完整 manifest（如 20 名被试全部 trial）上训练的一个 LR（<code>docs/assets/web_model.json</code>），对你 zip 中每一个「特征与标签同时对齐」的 trial 做预测，并与真值对比（Accuracy、混淆矩阵、真值/预测类别分布的 TVD 与熵等）。
+          最后，结果会被组织为可直接阅读的实验叙述，形成“指标—解释—结论”的闭环。
         </p>
       </section>
 

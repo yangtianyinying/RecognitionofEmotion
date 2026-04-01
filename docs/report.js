@@ -2,6 +2,19 @@ function fmt(value) {
   return Number(value).toFixed(4);
 }
 
+function renderReportConfusionMatrix(labels, matrix) {
+  let html = '<table class="matrix"><thead><tr><th>GT \\ Pred</th>';
+  html += labels.map((l) => `<th>${l}</th>`).join("");
+  html += "</tr></thead><tbody>";
+  for (let i = 0; i < matrix.length; i++) {
+    html += `<tr><th>${labels[i]}</th>`;
+    html += matrix[i].map((v) => `<td>${fmt(v)}</td>`).join("");
+    html += "</tr>";
+  }
+  html += "</tbody></table>";
+  return html;
+}
+
 function renderDatasetSummary(dataset) {
   const el = document.getElementById("dataset-summary");
   const labels = Object.entries(dataset.labels)
@@ -168,7 +181,7 @@ async function main() {
           <p><strong>文件大小：</strong>${fileInfo.size}</p>
           <p><strong>上传被试：</strong>${(result.uploaded_subjects || []).join(", ") || "无"}</p>
           <p><strong>特征类型：</strong>${result.feature_type_used}</p>
-          <p><strong>模型类型：</strong>LR + MLP（SEED 两协议）</p>
+          <p><strong>模型类型：</strong>LR + MLP（SEED 两协议）+ 全量 LR（见下文）</p>
         </div>
 
         <div style="height: 10px;"></div>
@@ -200,6 +213,53 @@ async function main() {
           </table>
           <p class="subtitle">说明：指标基于有效覆盖样本计算（valid/expected）。</p>
         </div>
+
+        ${(() => {
+          const skip = result.global_model_skipped_reason;
+          const g = result.global_full_data_lr;
+          if (skip) {
+            return `<div class="card card-soft" style="padding: 12px; margin-top: 12px;">
+          <h4 style="margin:0 0 6px;">全 20 被试训练 LR（上传子集全 trial）</h4>
+          <p class="subtitle">未运行：${skip}</p>
+        </div>`;
+          }
+          if (!g || !g.overall) return "";
+          const dd = g.distribution_diff || {};
+          const lbls = result.labels || [];
+          const distRows = lbls
+            .map((l) => {
+              const pt = (dd.p_true && dd.p_true[l]) ?? 0;
+              const pp = (dd.p_pred && dd.p_pred[l]) ?? 0;
+              const ct = (dd.counts_true && dd.counts_true[l]) ?? 0;
+              const cp = (dd.counts_pred && dd.counts_pred[l]) ?? 0;
+              return `<tr><td>${l}</td><td>${ct}</td><td>${fmt(pt)}</td><td>${cp}</td><td>${fmt(pp)}</td></tr>`;
+            })
+            .join("");
+          const perSub = (g.per_subject || [])
+            .map(
+              (x) =>
+                `<tr><td>${x.subject}</td><td>${fmt(x.accuracy)}</td><td>${fmt(x.macro_f1)}</td><td>${x.valid_trials}</td></tr>`
+            )
+            .join("");
+          return `<div class="card card-soft" style="padding: 12px; margin-top: 12px;">
+          <h4 style="margin:0 0 6px;">全 20 被试训练 LR（上传子集全 trial）</h4>
+          <p class="subtitle">在完整 manifest 上训练的单一逻辑回归；对上传 zip 内特征与 save_info 同时对齐的 trial 做预测并与真值对比。</p>
+          <p><strong>Accuracy</strong> ${fmt(g.overall.accuracy)}；<strong>Macro-F1</strong> ${fmt(g.overall.macro_f1)}；<strong>有效 trial</strong> ${g.coverage.valid_trials} / ${g.coverage.expected_trials}</p>
+          <p><strong>分布差异</strong>：TVD=${fmt(dd.tvd ?? 0)}；熵（自然对数）真值=${fmt(dd.entropy_true ?? 0)}、预测=${fmt(dd.entropy_pred ?? 0)}、差=${fmt(dd.entropy_delta ?? 0)}</p>
+          <h5 style="margin:8px 0;">按被试</h5>
+          <table>
+            <thead><tr><th>subject</th><th>Accuracy</th><th>Macro-F1</th><th>有效trial</th></tr></thead>
+            <tbody>${perSub || `<tr><td colspan="4">无</td></tr>`}</tbody>
+          </table>
+          <h5 style="margin:8px 0;">混淆矩阵（行=真值，列=预测）</h5>
+          ${renderReportConfusionMatrix(lbls, g.overall.confusion)}
+          <h5 style="margin:8px 0;">真值 / 预测 经验分布</h5>
+          <table>
+            <thead><tr><th>情绪</th><th>真值次数</th><th>真值比例</th><th>预测次数</th><th>预测比例</th></tr></thead>
+            <tbody>${distRows}</tbody>
+          </table>
+        </div>`;
+        })()}
 
         <div class="card card-soft" style="padding: 12px; margin-top: 12px;">
           <h4 style="margin:0 0 6px;">subject_dependent 按被试指标</h4>

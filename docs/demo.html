@@ -31,6 +31,7 @@
         </p>
         <p class="subtitle" style="margin-top: 10px;">
           说明：当前网页端支持 LR + MLP；首次点击“开始分析”时会加载 Pyodide（解析 `.mat`）与 JSZip（解压 zip），可能稍慢。
+          Pyodide 会依次尝试多个 CDN（jsDelivr / unpkg 等）；若某一 CDN 被网络屏蔽，会自动换源。仍失败时请换网络或使用可访问国际 CDN 的环境。
         </p>
         <div class="controls">
           <input id="upload-zip" type="file" accept=".zip" />
@@ -117,7 +118,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script src="./upload_infer.js"></script>
+    <script src="./upload_infer.js?v=3"></script>
     <script src="./demo.js"></script>
   </body>
 </html>

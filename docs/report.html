@@ -31,6 +31,7 @@
         </p>
         <p class="subtitle" style="margin-top: 10px;">
           为获得稳定解析：首次点击“生成报告”时会加载 Pyodide（解析 `.mat`）与 JSZip（解压 zip），可能会等待一小段时间。
+          Pyodide 会依次尝试多个 CDN；若某一 CDN 被屏蔽会自动换源，仍失败时请换网络或使用可访问国际 CDN 的环境。
         </p>
         <div class="controls">
           <input id="upload-zip-report" type="file" accept=".zip" />
@@ -123,7 +124,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script src="./upload_infer.js"></script>
+    <script src="./upload_infer.js?v=3"></script>
     <script src="./report.js"></script>
   </body>
 </html>
